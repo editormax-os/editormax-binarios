@@ -1,0 +1,27 @@
+# Publica una release con los archivos de una rama «activos-<etiqueta>»: la crea la automatización del repositorio, no una cuenta personal.
+# La rama lleva los archivos en activos/ y sus huellas en SHA256SUMS; al acabar, se quita.
+name: Publicar binarios
+on:
+  push:
+    branches: ["activos-*"]
+permissions:
+  contents: write
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar las huellas
+        run: cd activos && sha256sum --check ../SHA256SUMS
+      - name: Crear la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          etiqueta="${GITHUB_REF_NAME#activos-}"
+          gh release create "$etiqueta" activos/* SHA256SUMS --target main \
+            --title "EditorMax OS · binarios $etiqueta" \
+            --notes "ffmpeg, ffprobe, whisper-cli y faces para Mac (chip Apple e Intel), con el código fuente completo de ffmpeg y de las bibliotecas con las que se compila (GPL v3). Las huellas, en SHA256SUMS; cómo se compilan, en el README."
+      - name: Quitar la rama
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: git push origin --delete "$GITHUB_REF_NAME"
